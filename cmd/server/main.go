@@ -23,7 +23,7 @@ func main() {
 	//GET-запрос
 	rawPost, err := placeholderService.GetPost(1)
 	if err != nil {
-		log.Fatalf("Ошибка получения поста: %v", err)
+		log.Fatalf("Error get post: %v", err)
 	}
 	fmt.Printf("Получен пост:\n%s\n", rawPost)
 
@@ -36,7 +36,7 @@ func main() {
 
 	createdPost, err := placeholderService.Create(newPost)
 	if err != nil {
-		log.Fatalf("Ошибка создания поста: %v", err)
+		log.Fatalf("Error create post: %v", err)
 	}
 	fmt.Printf("Создан пост:\n%s\n", createdPost)
 }

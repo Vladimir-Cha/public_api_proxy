@@ -44,12 +44,6 @@ func (c *Client) Get(endpoint string) ([]byte, error) {
 func (c *Client) Post(endpoint string, body []byte) ([]byte, error) {
 	fullURL := c.baseURL + endpoint
 
-	req, err := http.NewRequest("POST", fullURL, bytes.NewBuffer(body))
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
 	//Выполняем запрос
 	resp, err := http.Post(fullURL, "application/json", bytes.NewBuffer(body))
 	if err != nil {
@@ -65,5 +59,14 @@ func handleResponse(resp *http.Response) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
+
+	if resp.StatusCode < 200 && resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		return nil, fmt.Errorf("error: %d", resp.StatusCode)
+	} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		return nil, fmt.Errorf("client error: %d", resp.StatusCode)
+	} else if resp.StatusCode >= 500 {
+		return nil, fmt.Errorf("server error: %d", resp.StatusCode)
+	}
+
 	return body, nil
 }
