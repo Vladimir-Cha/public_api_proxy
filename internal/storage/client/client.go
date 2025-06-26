@@ -60,13 +60,14 @@ func handleResponse(resp *http.Response) ([]byte, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	if resp.StatusCode < 200 && resp.StatusCode >= 300 && resp.StatusCode < 400 {
-		return nil, fmt.Errorf("error: %d", resp.StatusCode)
-	} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-		return nil, fmt.Errorf("client error: %d", resp.StatusCode)
-	} else if resp.StatusCode >= 500 {
-		return nil, fmt.Errorf("server error: %d", resp.StatusCode)
+	switch {
+	case resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices:
+		return body, nil
+	case resp.StatusCode >= http.StatusBadRequest && resp.StatusCode < http.StatusInternalServerError:
+		return nil, fmt.Errorf("client error %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+	case resp.StatusCode >= http.StatusInternalServerError:
+		return nil, fmt.Errorf("server error %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+	default:
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
-
-	return body, nil
 }
