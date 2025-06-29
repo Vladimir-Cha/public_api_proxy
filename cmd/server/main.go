@@ -5,8 +5,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/Vladimir-Cha/public_api_proxy/internal/storage/service"
-
 	"github.com/Vladimir-Cha/public_api_proxy/internal/storage/client"
 )
 
@@ -17,15 +15,12 @@ func main() {
 		10*time.Second,
 	)
 
-	//Создание сервиса
-	placeholderService := service.New(httpClient)
-
 	//GET-запрос
-	rawPost, err := placeholderService.GetPost(1)
+	rawPost, err := httpClient.Get("/posts/1")
 	if err != nil {
 		log.Fatalf("Error get post: %v", err)
 	}
-	fmt.Printf("Получен пост:\n%s\n", rawPost)
+	fmt.Printf("Получен пост:\n%s\n", string(rawPost))
 
 	//POST-запрос
 	newPost := []byte(`{
@@ -34,7 +29,7 @@ func main() {
         "userId": 1
     }`)
 
-	createdPost, err := placeholderService.Create(newPost)
+	createdPost, err := httpClient.Post("/posts", newPost)
 	if err != nil {
 		log.Fatalf("Error create post: %v", err)
 	}

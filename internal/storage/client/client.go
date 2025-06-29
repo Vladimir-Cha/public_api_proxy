@@ -1,11 +1,10 @@
 package client
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"net/http"
 	"time"
+
+	"github.com/go-resty/resty/v2"
 )
 
 type HTTPClient interface {
@@ -14,60 +13,39 @@ type HTTPClient interface {
 }
 
 type Client struct {
-	baseURL string
-	client  *http.Client
+	client *resty.Client
 }
 
 func New(baseURL string, timeout time.Duration) *Client {
 	return &Client{
-		baseURL: baseURL,
-		client: &http.Client{
-			Timeout: timeout,
-		},
+		client: resty.New().
+			SetBaseURL(baseURL).
+			SetTimeout(timeout).
+			SetHeader("Content-Type", "application/json"),
 	}
 }
 
 func (c *Client) Get(endpoint string) ([]byte, error) {
-	fullURL := c.baseURL + endpoint
-
-	resp, err := c.client.Get(fullURL)
+	resp, err := c.client.R().
+		Get(endpoint)
 
 	if err != nil {
 		return nil, fmt.Errorf("GET request failed: %w", err)
 	}
-	defer resp.Body.Close()
 
-	return handleResponse(resp)
+	return resp.Body(), nil
 }
 
 // Запрос с телом
 func (c *Client) Post(endpoint string, body []byte) ([]byte, error) {
-	fullURL := c.baseURL + endpoint
-
 	//Выполняем запрос
-	resp, err := http.Post(fullURL, "application/json", bytes.NewBuffer(body))
+	resp, err := c.client.R().
+		SetBody(body).
+		Post(endpoint)
+
 	if err != nil {
 		return nil, fmt.Errorf("POST request failed: %w", err)
 	}
-	defer resp.Body.Close()
 
-	return handleResponse(resp)
-}
-
-func handleResponse(resp *http.Response) ([]byte, error) {
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	switch {
-	case resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices:
-		return body, nil
-	case resp.StatusCode >= http.StatusBadRequest && resp.StatusCode < http.StatusInternalServerError:
-		return nil, fmt.Errorf("client error %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	case resp.StatusCode >= http.StatusInternalServerError:
-		return nil, fmt.Errorf("server error %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	default:
-		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
+	return resp.Body(), nil
 }
