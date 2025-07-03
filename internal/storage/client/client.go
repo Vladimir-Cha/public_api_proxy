@@ -1,15 +1,23 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/go-resty/resty/v2"
 )
 
+// структура для возврата метрик
+type ResponseMetrics struct {
+	Body       []byte
+	StatusCode int
+	Duration   time.Duration
+}
+
 type HTTPClient interface {
 	Get(url string) ([]byte, error)
-	Post(url string, body []byte) ([]byte, error)
+	Post(url string, body []byte) (*ResponseMetrics, error)
 }
 
 type Client struct {
@@ -21,11 +29,17 @@ func New(baseURL string, timeout time.Duration) *Client {
 		client: resty.New().
 			SetBaseURL(baseURL).
 			SetTimeout(timeout).
-			SetHeader("Content-Type", "application/json"),
+			SetHeader("Content-Type", "application/json").
+			OnBeforeRequest(func(c *resty.Client, req *resty.Request) error {
+				req.SetContext(context.WithValue(req.Context(), "startTime", time.Now()))
+				return nil
+			}),
 	}
 }
 
-func (c *Client) Get(endpoint string) ([]byte, error) {
+func (c *Client) Get(endpoint string) (*ResponseMetrics, error) {
+	startTime := time.Now()
+
 	resp, err := c.client.R().
 		Get(endpoint)
 
@@ -33,11 +47,16 @@ func (c *Client) Get(endpoint string) ([]byte, error) {
 		return nil, fmt.Errorf("GET request failed: %w", err)
 	}
 
-	return resp.Body(), nil
+	return &ResponseMetrics{
+		Body:       resp.Body(),
+		StatusCode: resp.StatusCode(),
+		Duration:   time.Since(startTime),
+	}, nil
 }
 
 // Запрос с телом
-func (c *Client) Post(endpoint string, body []byte) ([]byte, error) {
+func (c *Client) Post(endpoint string, body []byte) (*ResponseMetrics, error) {
+	startTime := time.Now()
 	//Выполняем запрос
 	resp, err := c.client.R().
 		SetBody(body).
@@ -47,5 +66,9 @@ func (c *Client) Post(endpoint string, body []byte) ([]byte, error) {
 		return nil, fmt.Errorf("POST request failed: %w", err)
 	}
 
-	return resp.Body(), nil
+	return &ResponseMetrics{
+		Body:       resp.Body(),
+		StatusCode: resp.StatusCode(),
+		Duration:   time.Since(startTime),
+	}, nil
 }

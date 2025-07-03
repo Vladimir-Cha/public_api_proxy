@@ -3,16 +3,30 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/Vladimir-Cha/public_api_proxy/internal/storage/client"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	//загрузка env файла
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("error loading .env file")
+	}
+
+	timeout, _ := strconv.Atoi(os.Getenv("API_TIMEOUT"))
+	baseUrl := os.Getenv("API_BASE_URL")
+	if baseUrl == "" {
+		log.Printf("URL not found")
+	}
 	//Инициализация HTTP-клиента
 	httpClient := client.New(
-		"https://jsonplaceholder.typicode.com",
-		10*time.Second,
+		baseUrl,
+		time.Duration(timeout)*time.Second,
 	)
 
 	//GET-запрос
@@ -20,7 +34,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error get post: %v", err)
 	}
-	fmt.Printf("Получен пост:\n%s\n", string(rawPost))
+	fmt.Printf(
+		"Получен пост:\nОтвет: %s\nКод ответа: %d\nВремя ответа: %v\n",
+		string(rawPost.Body),
+		rawPost.StatusCode,
+		rawPost.Duration,
+	)
 
 	//POST-запрос
 	newPost := []byte(`{
@@ -33,5 +52,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error create post: %v", err)
 	}
-	fmt.Printf("Создан пост:\n%s\n", createdPost)
+	fmt.Printf("Создан пост:\nКод ответа: %d\nВремя ответа: %v\n%s",
+		createdPost.StatusCode,
+		createdPost.Duration,
+		string(createdPost.Body),
+	)
 }
