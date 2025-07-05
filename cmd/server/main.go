@@ -8,34 +8,23 @@ import (
 	"time"
 
 	"github.com/Vladimir-Cha/public_api_proxy/internal/storage/client"
+	"github.com/Vladimir-Cha/public_api_proxy/internal/storage/config"
 	"github.com/joho/godotenv"
 )
 
 func main() {
-	//загрузка env файла
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("error loading .env file")
+	httpClient := loadConfig()
+	if httpClient == nil {
+		log.Fatal("Failed to load HTTP-config")
 	}
-
-	timeout, _ := strconv.Atoi(os.Getenv("API_TIMEOUT"))
-	baseUrl := os.Getenv("API_BASE_URL")
-	if baseUrl == "" {
-		log.Printf("URL not found")
-	}
-	//Инициализация HTTP-клиента
-	httpClient := client.New(
-		baseUrl,
-		time.Duration(timeout)*time.Second,
-	)
 
 	//GET-запрос
 	rawPost, err := httpClient.Get("/posts/1")
 	if err != nil {
 		log.Fatalf("Error get post: %v", err)
 	}
-	fmt.Printf(
-		"Получен пост:\nОтвет: %s\nКод ответа: %d\nВремя ответа: %v\n",
+	log.Printf(
+		"Get post:\nAnswer: %s\nResponse code: %d\nResponse time: %v\n",
 		string(rawPost.Body),
 		rawPost.StatusCode,
 		rawPost.Duration,
@@ -52,9 +41,40 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error create post: %v", err)
 	}
-	fmt.Printf("Создан пост:\nКод ответа: %d\nВремя ответа: %v\n%s",
+	fmt.Printf("Created post:\nResponse code: %d\nResponse time: %v\n%s",
 		createdPost.StatusCode,
 		createdPost.Duration,
 		string(createdPost.Body),
 	)
+}
+
+func loadConfig() *client.Client {
+	var cfg *config.Config
+
+	//загрузка env файла
+	if err := godotenv.Load(); err == nil {
+		timeout, _ := strconv.Atoi(os.Getenv("API_TIMEOUT_SECONDS"))
+		baseUrl := os.Getenv("API_BASE_URL")
+		if baseUrl == "" {
+			log.Fatalf("URL not found")
+		}
+
+		cfg = &config.Config{
+			API: config.APIconfig{
+				BaseURL: baseUrl,
+				Timeout: time.Duration(timeout) * time.Second,
+			},
+			Logging: config.LoggingConfig{
+				Enabled:  os.Getenv("LOG_ENABLED") == "true",
+				LevelLog: os.Getenv("LOG_LEVEL"),
+			},
+		}
+	} else {
+		//загрузка yaml конфига, если нет файла .env
+		cfg, err = config.Load("config.yaml")
+		if err != nil {
+			log.Fatalf("error loading config file: %v", err)
+		}
+	}
+	return client.New(cfg)
 }

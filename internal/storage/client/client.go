@@ -1,10 +1,10 @@
 package client
 
 import (
-	"context"
 	"fmt"
 	"time"
 
+	"github.com/Vladimir-Cha/public_api_proxy/internal/storage/config"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -22,18 +22,22 @@ type HTTPClient interface {
 
 type Client struct {
 	client *resty.Client
+	config *config.Config
 }
 
-func New(baseURL string, timeout time.Duration) *Client {
+func New(cfg *config.Config) *Client {
+
+	c := resty.New().
+		SetBaseURL(cfg.API.BaseURL).
+		SetTimeout(cfg.API.Timeout)
+
+	if cfg.Logging.Enabled {
+		c.SetDebug(true)
+	}
+
 	return &Client{
-		client: resty.New().
-			SetBaseURL(baseURL).
-			SetTimeout(timeout).
-			SetHeader("Content-Type", "application/json").
-			OnBeforeRequest(func(c *resty.Client, req *resty.Request) error {
-				req.SetContext(context.WithValue(req.Context(), "startTime", time.Now()))
-				return nil
-			}),
+		client: c,
+		//config: cfg,
 	}
 }
 

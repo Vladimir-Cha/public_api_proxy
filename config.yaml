@@ -1,0 +1,9 @@
+# Настройки API
+api:
+  base_url: "https://jsonplaceholder.typicode.com"
+  timeout_seconds: 10
+
+# Логирование
+logging:
+  enabled: true
+  level: "debug"
