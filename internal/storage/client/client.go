@@ -1,73 +1,78 @@
 package client
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"net/http"
 	"time"
+
+	"github.com/Vladimir-Cha/public_api_proxy/internal/storage/config"
+	"github.com/go-resty/resty/v2"
 )
+
+// структура для возврата метрик
+type ResponseMetrics struct {
+	Body       []byte
+	StatusCode int
+	Duration   time.Duration
+}
 
 type HTTPClient interface {
 	Get(url string) ([]byte, error)
-	Post(url string, body []byte) ([]byte, error)
+	Post(url string, body []byte) (*ResponseMetrics, error)
 }
 
 type Client struct {
-	baseURL string
-	client  *http.Client
+	client *resty.Client
+	config *config.Config
 }
 
-func New(baseURL string, timeout time.Duration) *Client {
+func New(cfg *config.Config) *Client {
+
+	c := resty.New().
+		SetBaseURL(cfg.API.BaseURL).
+		SetTimeout(cfg.API.Timeout)
+
+	if cfg.Logging.Enabled {
+		c.SetDebug(true)
+	}
+
 	return &Client{
-		baseURL: baseURL,
-		client: &http.Client{
-			Timeout: timeout,
-		},
+		client: c,
+		//config: cfg,
 	}
 }
 
-func (c *Client) Get(endpoint string) ([]byte, error) {
-	fullURL := c.baseURL + endpoint
+func (c *Client) Get(endpoint string) (*ResponseMetrics, error) {
+	startTime := time.Now()
 
-	resp, err := c.client.Get(fullURL)
+	resp, err := c.client.R().
+		Get(endpoint)
 
 	if err != nil {
 		return nil, fmt.Errorf("GET request failed: %w", err)
 	}
-	defer resp.Body.Close()
 
-	return handleResponse(resp)
+	return &ResponseMetrics{
+		Body:       resp.Body(),
+		StatusCode: resp.StatusCode(),
+		Duration:   time.Since(startTime),
+	}, nil
 }
 
 // Запрос с телом
-func (c *Client) Post(endpoint string, body []byte) ([]byte, error) {
-	fullURL := c.baseURL + endpoint
-
+func (c *Client) Post(endpoint string, body []byte) (*ResponseMetrics, error) {
+	startTime := time.Now()
 	//Выполняем запрос
-	resp, err := http.Post(fullURL, "application/json", bytes.NewBuffer(body))
+	resp, err := c.client.R().
+		SetBody(body).
+		Post(endpoint)
+
 	if err != nil {
 		return nil, fmt.Errorf("POST request failed: %w", err)
 	}
-	defer resp.Body.Close()
 
-	return handleResponse(resp)
-}
-
-func handleResponse(resp *http.Response) ([]byte, error) {
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	switch {
-	case resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices:
-		return body, nil
-	case resp.StatusCode >= http.StatusBadRequest && resp.StatusCode < http.StatusInternalServerError:
-		return nil, fmt.Errorf("client error %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	case resp.StatusCode >= http.StatusInternalServerError:
-		return nil, fmt.Errorf("server error %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	default:
-		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
+	return &ResponseMetrics{
+		Body:       resp.Body(),
+		StatusCode: resp.StatusCode(),
+		Duration:   time.Since(startTime),
+	}, nil
 }

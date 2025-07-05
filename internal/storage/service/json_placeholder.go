@@ -21,6 +21,6 @@ func (s *JSONPlaceholder) GetPost(id int) ([]byte, error) {
 	return s.client.Get(endpoint)
 }
 
-func (s *JSONPlaceholder) Create(post []byte) ([]byte, error) {
+func (s *JSONPlaceholder) Create(post []byte) (*client.ResponseMetrics, error) {
 	return s.client.Post("/posts", post)
 }
