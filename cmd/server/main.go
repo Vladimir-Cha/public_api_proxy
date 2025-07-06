@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
-	"time"
 
 	"github.com/Vladimir-Cha/public_api_proxy/internal/storage/client"
 	"github.com/Vladimir-Cha/public_api_proxy/internal/storage/config"
@@ -51,30 +49,27 @@ func main() {
 func loadConfig() *client.Client {
 	var cfg *config.Config
 
+	//загрузка yaml конфига
+	cfg, err := config.Load("config.yaml")
+	if err != nil {
+		log.Fatalf("error loading config file: %v", err)
+		cfg = &config.Config{} // пустой конфиг
+	}
+
 	//загрузка env файла
 	if err := godotenv.Load(); err == nil {
-		timeout, _ := strconv.Atoi(os.Getenv("API_TIMEOUT_SECONDS"))
-		baseUrl := os.Getenv("API_BASE_URL")
-		if baseUrl == "" {
-			log.Fatalf("URL not found")
+		if baseUrl := os.Getenv("API_BASE_URL"); baseUrl != "" {
+			cfg.API.BaseURL = baseUrl
 		}
-
-		cfg = &config.Config{
-			API: config.APIconfig{
-				BaseURL: baseUrl,
-				Timeout: time.Duration(timeout) * time.Second,
-			},
-			Logging: config.LoggingConfig{
-				Enabled:  os.Getenv("LOG_ENABLED") == "true",
-				LevelLog: os.Getenv("LOG_LEVEL"),
-			},
-		}
-	} else {
-		//загрузка yaml конфига, если нет файла .env
-		cfg, err = config.Load("config.yaml")
-		if err != nil {
-			log.Fatalf("error loading config file: %v", err)
+		if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
+			cfg.Logging.LevelLog = logLevel
 		}
 	}
+
+	if cfg.API.BaseURL == "" {
+		log.Fatalf("URL not found in config.yaml and .env")
+	}
+
+	log.Printf("Final config: %v", cfg)
 	return client.New(cfg)
 }
