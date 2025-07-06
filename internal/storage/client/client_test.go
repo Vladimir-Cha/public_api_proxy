@@ -8,6 +8,7 @@ import (
 
 	"github.com/Vladimir-Cha/public_api_proxy/internal/storage/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // тестовый сервер
@@ -34,7 +35,7 @@ func TestGet(t *testing.T) {
 	client := New(cfg) // создан клиент
 	resp, err := client.Get("/")
 
-	assert.NoError(t, err)                          // отсутствие ошибок
+	require.NoError(t, err)                         // отсутствие ошибок
 	assert.Equal(t, http.StatusOK, resp.StatusCode) // ответ должен быть 200 OK
 	assert.Equal(t, `{"id": 1}`, string(resp.Body)) // сравнение тела ответа
 }
@@ -72,7 +73,7 @@ func TestPost(t *testing.T) {
 	data := []byte(`{"title":"Test"}`)
 	resp, err := client.Post("/posts", data)
 
-	assert.NoError(t, err)                               // отсутствие ошибок
+	require.NoError(t, err)                              // отсутствие ошибок
 	assert.Equal(t, http.StatusCreated, resp.StatusCode) // ответ должен быть 201
 	assert.Contains(t, string(resp.Body), `{"id": 1}`)   // сравнение тела ответа
 }

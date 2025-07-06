@@ -11,13 +11,13 @@ import (
 )
 
 func main() {
-	httpClient := loadConfig()
-	if httpClient == nil {
+	httpConfig := loadConfig()
+	if httpConfig == nil {
 		log.Fatal("Failed to load HTTP-config")
 	}
 
 	//GET-запрос
-	rawPost, err := httpClient.Get("/posts/1")
+	rawPost, err := httpConfig.Get("/posts/1")
 	if err != nil {
 		log.Fatalf("Error get post: %v", err)
 	}
@@ -35,7 +35,7 @@ func main() {
         "userId": 1
     }`)
 
-	createdPost, err := httpClient.Post("/posts", newPost)
+	createdPost, err := httpConfig.Post("/posts", newPost)
 	if err != nil {
 		log.Fatalf("Error create post: %v", err)
 	}
