@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -40,7 +39,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error create post: %v", err)
 	}
-	fmt.Printf("Created post:\nResponse code: %d\nResponse time: %v\n%s",
+	log.Printf("Created post:\nResponse code: %d\nResponse time: %v\n%s",
 		createdPost.StatusCode,
 		createdPost.Duration,
 		string(createdPost.Body),
@@ -48,23 +47,33 @@ func main() {
 }
 
 func loadConfig() *config.Config {
-	var cfg *config.Config
+	var cfg config.Config
 
-	//загрузка yaml конфига
-	cfg, err := config.Load("config.yaml")
-	if err != nil {
-		log.Fatalf("error loading config file: %v", err)
-		cfg = &config.Config{} // пустой конфиг
+	// загрузка env файла
+	if err := godotenv.Load(); err != nil {
+		log.Printf(".env file not found: %v", err)
 	}
 
-	//загрузка env файла
-	if err := godotenv.Load(); err == nil {
-		if baseUrl := os.Getenv("API_BASE_URL"); baseUrl != "" {
-			cfg.API.BaseURL = baseUrl
-		}
-		if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
-			cfg.Logging.LevelLog = logLevel
-		}
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		configPath = "config.yaml"
+	}
+
+	//загрузка yaml конфига
+	loadCfg, err := config.Load(configPath)
+	if err != nil {
+		log.Printf("error loading config file: %v", err)
+	} else {
+		cfg = *loadCfg
+	}
+
+	//загрузка конфига из env файла
+	if baseUrl := os.Getenv("API_BASE_URL"); baseUrl != "" {
+		cfg.API.BaseURL = baseUrl
+	}
+
+	if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
+		cfg.Logging.LevelLog = logLevel
 	}
 
 	if cfg.API.BaseURL == "" {
@@ -72,5 +81,5 @@ func loadConfig() *config.Config {
 	}
 
 	log.Printf("Final config: %v", cfg)
-	return cfg
+	return &cfg
 }
