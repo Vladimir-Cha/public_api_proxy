@@ -11,13 +11,14 @@ import (
 )
 
 func main() {
-	httpConfig := loadConfig()
-	if httpConfig == nil {
+	cfg := loadConfig()
+	if cfg == nil {
 		log.Fatal("Failed to load HTTP-config")
 	}
+	httpClient := client.New(cfg)
 
 	//GET-запрос
-	rawPost, err := httpConfig.Get("/posts/1")
+	rawPost, err := httpClient.Get("/posts/1")
 	if err != nil {
 		log.Fatalf("Error get post: %v", err)
 	}
@@ -35,7 +36,7 @@ func main() {
         "userId": 1
     }`)
 
-	createdPost, err := httpConfig.Post("/posts", newPost)
+	createdPost, err := httpClient.Post("/posts", newPost)
 	if err != nil {
 		log.Fatalf("Error create post: %v", err)
 	}
@@ -46,7 +47,7 @@ func main() {
 	)
 }
 
-func loadConfig() *client.Client {
+func loadConfig() *config.Config {
 	var cfg *config.Config
 
 	//загрузка yaml конфига
@@ -71,5 +72,5 @@ func loadConfig() *client.Client {
 	}
 
 	log.Printf("Final config: %v", cfg)
-	return client.New(cfg)
+	return cfg
 }
